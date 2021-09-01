@@ -1,0 +1,14 @@
+{
+  "inputs": [
+    {
+      "inputFile": "./dist/merchant-api.json"
+    },
+    {
+      "inputFile": "./dist/payment-api.json"
+    },
+    {
+      "inputFile": "./dist/calculator-api.json"
+    }
+  ], 
+  "output": "../openapi.json"
+}

@@ -1,6 +1,6 @@
-# OpenAPI Generator Config for ratenkaufbyeasycredit-payment-api-v3
+# OpenAPI Generator Config for ratenkaufbyeasycredit-v3 API's 
 
-This repository holds the OpenAPI specification of the ratenkauf by easyCredit API v3 and the configuration files to generate clients for different programming languages, most importantly the PHP client.
+This repository holds the OpenAPI specifications of the ratenkauf by easyCredit API v3 (payment, merchant, calculator) and the configuration files to generate clients for different programming languages, most importantly the PHP client.
 
 ## PHP Generator Configuration & Templates
 
@@ -12,7 +12,8 @@ The current version (work in progress) can be found here: https://github.com/net
 The client can be generated using the commands in the `package.json` or by simply using the commands with `yarn` or `npm run`. Before the codegen works, the `openapi.yaml` file needs to be converted to JSON using the `convert-spec` command
 
 ```
-yarn convert-spec
+yarn install
+./converter/merge.sh
 yarn codegen:php
 ``` 
 

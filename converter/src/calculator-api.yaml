@@ -1,0 +1,156 @@
+openapi: 3.0.2
+info:
+  title: Ratenkauf Ratenrechner-V3 API Definition
+  description: Ratenkauf Ratenrechner-V3 API for ratenkauf App
+  version: V3.68.0
+tags:
+  - name: installmentplan
+    description: endpoints for operations regarding a installmentplans
+paths:
+  /api/ratenrechner/v3/webshop/{shopIdentifier}/installmentplans:
+    post:
+      summary: Calculates the installmentplan
+      description: '''
+      Calculates the installmentplan for every article.
+      '''
+      tags:
+        - installmentplan
+      parameters:
+        - $ref: '#/components/parameters/shopid'
+      requestBody:
+        $ref: '#/components/requestBodies/InstallmentPlanRequest'
+      responses:
+        '200':
+          $ref: '#/components/responses/InstallmentPlanResponse'
+        '400':
+          $ref: '#/components/responses/ConstraintViolationError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+components:
+  schemas:
+    InstallmentPlanRequest:
+      type: object
+      properties:
+        articles:
+          $ref: '#/components/schemas/Articles'
+    Articles:
+      type: array
+      minItems: 1
+      maxItems: 100
+      items:
+        $ref: '#/components/schemas/Article'
+    Article:
+      type: object
+      properties:
+        identifier:
+          description: 'article name or article Id'
+          type: string
+          example: Washing Machine
+        price:
+          type: number
+          description: 'Amount in €'
+          example: 599.95
+    InstallmentPlans:
+      type: array
+      items:
+        $ref: '#/components/schemas/InstallmentPlan'
+    InstallmentPlan:
+      type: object
+      properties:
+        example:
+          type: string
+          description: 'An example calculation for the installment plan'
+        articleIdentifier:
+          type: string
+          description: 'article name or article Id'
+          example: Wahsing Machine
+        url:
+          type: string
+          description: 'Url leading to the widget providing more detailed information for an article and its installmentplan'
+        plans:
+          $ref: '#/components/schemas/Plans'
+    Plans:
+      type: array
+      items:
+        $ref: '#/components/schemas/Plan'
+    Plan:
+      type: object
+      properties:
+        term:
+          type: integer
+        installment:
+          type: number
+    InstallmentPlanResponse:
+      type: object
+      properties:
+        installmentPlans:
+          $ref: '#/components/schemas/InstallmentPlans'
+    ConstraintViolation:
+      type: object
+      properties:
+        title:
+          type: string
+        violations:
+          type: array
+          minItems: 1
+          items:
+            type: object
+            properties:
+              field:
+                type: string
+              message:
+                type: string
+            required:
+              - field
+              - message
+      required:
+        - title
+        - violations
+    ServerError:
+      type: object
+      properties:
+        title:
+          type: string
+        detail:
+          type: string
+  parameters:
+    shopid:
+      name: shopIdentifier
+      in: path
+      description: Shop Identifier
+      required: true
+      schema:
+        type: string
+  requestBodies:
+    InstallmentPlanRequest:
+      description: integration check request
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/InstallmentPlanRequest'
+  responses:
+    default:
+      description: Internal server error or error from third party services
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ServerError'
+    InstallmentPlanResponse:
+      description: Information about the InstallmentPlan for different articles
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/InstallmentPlanResponse'
+    ConstraintViolationError:
+      description: The request is invalid and has one or more constraint violations.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ConstraintViolation'
+    NotFoundError:
+      description: The request could not be completed due to an entity that was not found.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ConstraintViolation'
+

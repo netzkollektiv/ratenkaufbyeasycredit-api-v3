@@ -1,8 +1,11 @@
 {
   "scripts": {
-    "convert-spec": "docker run --rm -v ${PWD}:/workdir mikefarah/yq eval -j openapi.yaml > openapi.json",
+    "convert": "./converter/merge.sh",
     "codegen:php": "docker run --rm -v ${PWD}:/local openapitools/openapi-generator-cli generate -i /local/openapi.json -c /local/config.json -g php -o /local/dist/php -t /local/templates",
     "codegen:nodejs": "docker run --rm -v ${PWD}:/local openapitools/openapi-generator-cli generate -i /local/openapi.json -c /local/config.json -g typescript-node -o /local/dist/nodejs -t /local/templates",
     "run-tests:php": "export $(cat .env | xargs) && (cd dist/php && php vendor/bin/phpunit --filter ApiTest)"
+  },
+  "dependencies": {
+    "openapi-merge-cli": "^1.1.29"
   }
 }

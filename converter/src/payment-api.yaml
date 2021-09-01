@@ -1,11 +1,8 @@
 openapi: 3.0.2
-servers:
-- url: https://ratenkauf.easycredit.de/
-  description: The production API server
 info:
   title: Ratenkauf Verkauf-V3 API Definition
   description: Ratenkauf Verkauf-V3 API for ratenkauf App
-  version: V3.73.0
+  version: V3.74.2
 tags:
   - name: webshop
     description: endpoints for operations regarding a webshop
@@ -130,51 +127,7 @@ paths:
           $ref: '#/components/responses/ForbiddenError'
         '404':
           $ref: '#/components/responses/NotFoundError'
-  /api/payment/v3/transaction/{technicalTransactionId}/summary:
-    get:
-      summary: Get the necessary information regarding the transaction for checkout
-      description: '''
-      Based on the unique TeamBank identifier, the necessary information of the corresponding transaction is returned for checkout.
-      Supports body signature.
-      '''
-      tags:
-        - transaction
-      security:
-        - basicAuth: [ ]
-      parameters:
-        - $ref: '#/components/parameters/technicalTransactionId'
-      responses:
-        '200':
-          $ref: '#/components/responses/TransactionSummaryResponse'
-        '400':
-          $ref: '#/components/responses/ConstraintViolationError'
-        '401':
-          $ref: '#/components/responses/AuthenticationError'
-        '403':
-          $ref: '#/components/responses/ForbiddenError'
-        '404':
-          $ref: '#/components/responses/NotFoundError'
   /api/payment/v3/transaction/{technicalTransactionId}/authorization:
-    get:
-      summary: Returns the authorization status of a transaction
-      description: '''
-          The authorization status of a transaction will be returned.
-          '''
-      tags:
-        - transaction
-      security:
-        - basicAuth: [ ]
-      parameters:
-        - $ref: '#/components/parameters/technicalTransactionId'
-      responses:
-        '200':
-          $ref: '#/components/responses/AuthorizationStatusResponse'
-        '400':
-          $ref: '#/components/responses/ConstraintViolationError'
-        '401':
-          $ref: '#/components/responses/AuthenticationError'
-        '404':
-          $ref: '#/components/responses/NotFoundError'
     post:
       summary: Authorizes a transaction after finishing the process in a webshop
       description: '''
@@ -217,7 +170,7 @@ components:
           example: ratenkauf by easyCredit
       required:
         - message
-    TransactionInitRequest:
+    Transaction:
       type: object
       properties:
         financingTerm:
@@ -241,9 +194,8 @@ components:
         - shopIdentifier
         - orderDetails
         - customer
-        - customerRelationship
         - redirectLinks
-    TransactionUpdateRequest:
+    TransactionUpdate:
       type: object
       properties:
         orderValue:
@@ -255,10 +207,14 @@ components:
         numberOfProductsInShoppingCart:
           type: integer
           example: 2
+        orderId:
+          description: Shop transaction identifier (allows the shop to store its own reference for the transaction)
+          type: string
+          example: A1ZU560
+          pattern: "[a-zA-Z0-9\\.:\\-_/]*"
+          maxLength: 50
         shoppingCartInformation:
           $ref: '#/components/schemas/ShoppingCartInformation'
-      required:
-        - orderValue
     Shopsystem:
       description: technischeShopparameter
       type: object
@@ -289,7 +245,7 @@ components:
           type: integer
           example: 2
         invoiceAddress:
-          $ref: '#/components/schemas/Address'
+          $ref: '#/components/schemas/InvoiceAddress'
         shippingAddress:
           $ref: '#/components/schemas/ShippingAddress'
         shoppingCartInformation:
@@ -419,6 +375,17 @@ components:
           required:
             - firstName
             - lastName
+    InvoiceAddress:
+      allOf:
+        - $ref: '#/components/schemas/Address'
+        - type: object
+          properties:
+            firstName:
+              description: Optional, if present should match with the first name given in the person data
+              type: string
+            lastName:
+              description: Optional, if present should match with the last name given in the person data
+              type: string
     Contact:
       type: object
       properties:
@@ -493,15 +460,15 @@ components:
         urlSuccess:
           description: urlErfolg -> Return url address if the transaction is successful
           type: string
-          example: https://www.poolpowershop.de/payment_easycredit/return
+          example: https://www.google.com/search?q=easycreditSuccess
         urlCancellation:
           description: urlAbbruch -> Return url address if the transaction is canceled
           type: string
-          example: https://zoolatino.de/module/easycreditratenkauf/canceled
+          example: https://www.google.com/search?q=easycreditCanceled
         urlDenial:
           description: urlAblehnung -> Return url address if the transaction is denied
           type: string
-          example: https://zoolatino.de/module/easycreditratenkauf/denied
+          example: https://www.google.com/search?q=easycreditDenied
         urlAuthorizationCallback:
           description: '''
           Optional Callback-Url for authorization endpoint.
@@ -608,7 +575,7 @@ components:
           type: string
           format: date-time
           example: '2021-03-04T14:41:09.002Z'
-    TransactionSummaryResponse:
+    TransactionSummary:
       type: object
       properties:
         orderValue:
@@ -642,13 +609,13 @@ components:
           description: Amount  in € of the last installment according to the payment plan ( = betrag der letzten Rate in €)
           type: number
           example: 293.58
-    TransactionInformationResponse:
+    TransactionInformation:
       type: object
       properties:
         decision:
-          $ref: '#/components/schemas/TransactionSummaryResponse'
+          $ref: '#/components/schemas/TransactionSummary'
         transaction:
-          $ref: '#/components/requestBodies/TransactionInitRequest'
+          $ref: '#/components/schemas/Transaction'
         status:
           type: string
           enum:
@@ -727,13 +694,13 @@ components:
       content:
         application/json:
           schema:
-            $ref: '#/components/schemas/TransactionInitRequest'
+            $ref: '#/components/schemas/Transaction'
     TransactionUpdateRequest:
       description: update request
       content:
         application/json:
           schema:
-            $ref: '#/components/schemas/TransactionUpdateRequest'
+            $ref: '#/components/schemas/TransactionUpdate'
   responses:
     default:
       description: Internal server error or error from third party services
@@ -770,19 +737,13 @@ components:
       content:
         application/hal+json:
           schema:
-            $ref: '#/components/schemas/TransactionSummaryResponse'
-    TransactionSummaryResponse:
-      description: Transaction summary data for checkout
-      content:
-        application/hal+json:
-          schema:
-            $ref: '#/components/schemas/TransactionSummaryResponse'
+            $ref: '#/components/schemas/TransactionSummary'
     TransactionInformationResponse:
       description: Transaction information data
       content:
         application/hal+json:
           schema:
-            $ref: '#/components/schemas/TransactionInformationResponse'
+            $ref: '#/components/schemas/TransactionInformation'
     ConstraintViolationError:
       description: The request is invalid and has one or more constraint violations.
       content:
