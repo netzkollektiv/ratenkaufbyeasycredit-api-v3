@@ -2,6 +2,13 @@
 
 This repository holds the OpenAPI specifications of the ratenkauf by easyCredit API v3 (payment, merchant, calculator) and the configuration files to generate clients for different programming languages, most importantly the PHP client.
 
+## API Docs
+
+The automatically generated API docs can be found here:
+https://netzkollektiv.github.io/ratenkaufbyeasycredit-api-v3/
+
+The docs include the payment, merchant and calculation API.
+
 ## PHP Generator Configuration & Templates
 
 The main goal is to generate a universal PHP API client for the v3 API. The client itself will not be part of this repository.
