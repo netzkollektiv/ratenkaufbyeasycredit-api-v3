@@ -1,0 +1,10 @@
+{
+    "buildPages": [
+        {
+            "apiSpecPath": "openapi.json",
+            "htmlOutfile": "index.html",
+            "yamlOutfile": "openapi.yaml",
+            "jsonOutfile": "openapi.json"
+        }
+    ]
+}
