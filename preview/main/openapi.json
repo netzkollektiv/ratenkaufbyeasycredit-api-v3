@@ -3,8 +3,13 @@
   "info": {
     "title": "Transaction-V3 API Definition",
     "description": "Transaction-V3 API for Merchant Portal",
-    "version": "V3.74.0"
+    "version": "V3.83.0"
   },
+  "servers": [
+    {
+      "url": "https://partner.easycredit-ratenkauf.de"
+    }
+  ],
   "tags": [
     {
       "name": "transaction",
@@ -13,6 +18,10 @@
     {
       "name": "webshop",
       "description": "endpoints for operations regarding a webshop"
+    },
+    {
+      "name": "serviceintegration",
+      "description": "' similar to transaction endpoint, but with additional features for Self Integration without Payment Page frontend '"
     },
     {
       "name": "installmentplan",
@@ -56,6 +65,9 @@
           },
           {
             "$ref": "#/components/parameters/maxOrderValue"
+          },
+          {
+            "$ref": "#/components/parameters/tId"
           }
         ],
         "responses": {
@@ -269,6 +281,28 @@
         }
       }
     },
+    "/api/payment/v3/webshop/{webshopId}": {
+      "get": {
+        "summary": "Get the necessary information about the webshop",
+        "description": "' This API returns the necessary information of the corresponding webshop. This includes max and min financing amount, interest rate, test mode, current availability information and privacy approval form '",
+        "tags": [
+          "webshop"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/webshopId"
+          }
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/WebshopResponse"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFoundError"
+          }
+        }
+      }
+    },
     "/api/payment/v3/transaction": {
       "post": {
         "summary": "Initiates a transaction based on the given request",
@@ -408,6 +442,59 @@
           },
           "409": {
             "$ref": "#/components/responses/ConflictError"
+          }
+        }
+      }
+    },
+    "/api/payment/si/v3/transaction/preAuthorization": {
+      "post": {
+        "summary": "preAuthorizes a transaction",
+        "description": "' The preAuthorization of a transaction will trigger the initialization and the decision process. It additionally requires a device-ident token. It returns the decision object with the information if the mobile tan process is required. '",
+        "tags": [
+          "serviceintegration"
+        ],
+        "security": [
+          {
+            "basicAuth": []
+          }
+        ],
+        "requestBody": {
+          "$ref": "#/components/requestBodies/PreAuthorizationRequest"
+        },
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/TransactionInitResponse"
+          },
+          "400": {
+            "$ref": "#/components/responses/ConstraintViolationError"
+          },
+          "401": {
+            "$ref": "#/components/responses/AuthenticationError"
+          },
+          "403": {
+            "$ref": "#/components/responses/ForbiddenError"
+          },
+          "409": {
+            "$ref": "#/components/responses/ConflictError"
+          }
+        }
+      }
+    },
+    "/api/payment/si/v3/identity": {
+      "post": {
+        "summary": "create an identity token (device ident ID) which must be used in the payment process",
+        "description": "' '",
+        "tags": [
+          "serviceintegration"
+        ],
+        "security": [
+          {
+            "basicAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/IdentityResponse"
           }
         }
       }
@@ -616,6 +703,17 @@
       "OrderDetails": {
         "type": "object",
         "properties": {
+          "orderId": {
+            "description": "Order Id",
+            "type": "string",
+            "example": "ABCDE"
+          },
+          "clearingDate": {
+            "description": "Clearing date ( = abrechnungsdatum)",
+            "type": "string",
+            "format": "date",
+            "example": "2017-05-06"
+          },
           "orderDate": {
             "description": "Order date ( = bestelldatum)",
             "type": "string",
@@ -739,6 +837,22 @@
           "message"
         ]
       },
+      "TransactionSI": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/Transaction"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "deviceIdentToken": {
+                "type": "string",
+                "description": "Device Ident Token"
+              }
+            }
+          }
+        ]
+      },
       "Transaction": {
         "type": "object",
         "properties": {
@@ -761,6 +875,9 @@
           },
           "redirectLinks": {
             "$ref": "#/components/schemas/RedirectLinks"
+          },
+          "consent": {
+            "$ref": "#/components/schemas/Consent"
           }
         },
         "required": [
@@ -793,6 +910,20 @@
           },
           "shoppingCartInformation": {
             "$ref": "#/components/schemas/ShoppingCartInformation"
+          },
+          "financingTerm": {
+            "type": "integer",
+            "example": 6,
+            "description": "' Duration in months, depending on individual shop conditions and order value (please check your ratenkauf widget). Will be set to default value if not available. '"
+          },
+          "contact": {
+            "$ref": "#/components/schemas/Contact"
+          },
+          "bank": {
+            "$ref": "#/components/schemas/Bank"
+          },
+          "customerRelationship": {
+            "$ref": "#/components/schemas/CustomerRelationship"
           }
         }
       },
@@ -803,11 +934,13 @@
           "shopSystemManufacturer": {
             "description": "Shop system manufacturer",
             "type": "string",
+            "maxLength": 255,
             "example": "Shopware 5.5.10"
           },
           "shopSystemModuleVersion": {
             "description": "Shop system module version",
             "type": "string",
+            "maxLength": 255,
             "example": "1.6.3"
           }
         }
@@ -830,6 +963,8 @@
           "numberOfProductsInShoppingCart": {
             "description": "anzahlProdukteImWarenkorb",
             "type": "integer",
+            "minimum": 1,
+            "maximum": 10,
             "example": 2
           },
           "invoiceAddress": {
@@ -889,6 +1024,7 @@
           },
           "birthDate": {
             "type": "string",
+            "format": "date",
             "example": "1949-10-17"
           },
           "birthName": {
@@ -900,7 +1036,8 @@
           },
           "birthPlace": {
             "description": "Buyer birth place",
-            "type": "string"
+            "type": "string",
+            "maxLength": 255
           },
           "title": {
             "type": "string",
@@ -919,6 +1056,9 @@
           },
           "employment": {
             "$ref": "#/components/schemas/Employment"
+          },
+          "companyName": {
+            "type": "string"
           }
         },
         "required": [
@@ -1043,14 +1183,14 @@
             "type": "string",
             "example": 17186397426
           },
-          "skipMobilePhoneNumberCheck": {
-            "description": "true if the field mobile phone number should not be checked",
-            "type": "boolean",
-            "example": false
-          },
           "phoneNumber": {
             "description": "Customer phone number.",
             "type": "string"
+          },
+          "phoneNumbersConfirmed": {
+            "description": "true if the fields mobile phone number and phone number should not be validated.",
+            "type": "boolean",
+            "example": false
           }
         },
         "required": [
@@ -1112,12 +1252,10 @@
           "logisticsServiceProvider": {
             "description": "Logistics service provider for the delivery of the order",
             "type": "string",
+            "maxLength": 255,
             "example": "Hermes"
           }
-        },
-        "required": [
-          "orderDoneWithLogin"
-        ]
+        }
       },
       "RedirectLinks": {
         "description": "Redirect url addresses in case of success, cancellation and denial",
@@ -1161,6 +1299,7 @@
         "properties": {
           "productName": {
             "type": "string",
+            "maxLength": 255,
             "example": "Washing Machine"
           },
           "quantity": {
@@ -1174,10 +1313,12 @@
           },
           "manufacturer": {
             "type": "string",
+            "maxLength": 255,
             "example": "Siemens"
           },
           "productCategory": {
             "type": "string",
+            "maxLength": 255,
             "example": "Household Appliances"
           },
           "articleNumber": {
@@ -1200,11 +1341,13 @@
           "numberType": {
             "description": "Number type of the article",
             "type": "string",
+            "maxLength": 255,
             "example": "GTIN"
           },
           "number": {
             "description": "Article number of the given type",
             "type": "string",
+            "maxLength": 255,
             "example": 1111111
           }
         },
@@ -1276,6 +1419,43 @@
             "type": "string",
             "format": "date-time",
             "example": "2021-03-04T14:41:09.002Z"
+          },
+          "transactionInformation": {
+            "$ref": "#/components/schemas/TransactionInformation"
+          }
+        }
+      },
+      "MTan": {
+        "type": "object",
+        "properties": {
+          "required": {
+            "type": "boolean",
+            "example": true
+          },
+          "successful": {
+            "type": "boolean",
+            "example": true
+          },
+          "mobilePhoneNumberInvalid": {
+            "type": "boolean",
+            "example": true
+          },
+          "skipMobilePhoneNumberValidation": {
+            "type": "boolean",
+            "example": true
+          }
+        }
+      },
+      "BankAccountCheck": {
+        "type": "object",
+        "properties": {
+          "required": {
+            "type": "boolean",
+            "example": false
+          },
+          "successful": {
+            "type": "boolean",
+            "example": false
           }
         }
       },
@@ -1320,6 +1500,25 @@
             "description": "Amount  in € of the last installment according to the payment plan ( = betrag der letzten Rate in €)",
             "type": "number",
             "example": 293.58
+          },
+          "mtan": {
+            "$ref": "#/components/schemas/MTan"
+          },
+          "bankAccountCheck": {
+            "$ref": "#/components/schemas/BankAccountCheck"
+          }
+        }
+      },
+      "DeviceIdentToken": {
+        "type": "object",
+        "properties": {
+          "timestamp": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "deviceIdentToken": {
+            "type": "string",
+            "example": "dffedf20-21df-11ec-9621-0242ac130002"
           }
         }
       },
@@ -1341,6 +1540,20 @@
               "AUTHORIZED",
               "EXPIRED"
             ]
+          }
+        }
+      },
+      "Consent": {
+        "type": "object",
+        "properties": {
+          "sepaMandate": {
+            "type": "boolean"
+          },
+          "advertisement": {
+            "type": "boolean"
+          },
+          "dataProcessing": {
+            "type": "boolean"
           }
         }
       },
@@ -1429,6 +1642,15 @@
           },
           "installment": {
             "type": "number"
+          },
+          "totalInterest": {
+            "type": "number"
+          },
+          "totalAmount": {
+            "type": "number"
+          },
+          "lastInstallment": {
+            "type": "number"
           }
         }
       },
@@ -1437,6 +1659,12 @@
         "properties": {
           "installmentPlans": {
             "$ref": "#/components/schemas/InstallmentPlans"
+          },
+          "minFinancing": {
+            "type": "number"
+          },
+          "maxFinancing": {
+            "type": "number"
           }
         }
       }
@@ -1582,6 +1810,26 @@
           }
         }
       },
+      "PreAuthorizationResponse": {
+        "description": "Decision information data",
+        "content": {
+          "application/hal+json": {
+            "schema": {
+              "$ref": "#/components/schemas/TransactionSummary"
+            }
+          }
+        }
+      },
+      "IdentityResponse": {
+        "description": "Device Ident Token",
+        "content": {
+          "application/hal+json": {
+            "schema": {
+              "$ref": "#/components/schemas/DeviceIdentToken"
+            }
+          }
+        }
+      },
       "InstallmentPlanResponse": {
         "description": "Information about the InstallmentPlan for different articles",
         "content": {
@@ -1678,10 +1926,28 @@
           "example": 9999.99
         }
       },
+      "tId": {
+        "name": "tId",
+        "in": "query",
+        "description": "Unique functional transaction identifier (consists of 6 characters) provided through the query",
+        "schema": {
+          "type": "string",
+          "example": "EWZEN7"
+        }
+      },
       "technicalTransactionId": {
         "name": "technicalTransactionId",
         "in": "path",
         "description": "Unique TeamBank transaction identifier",
+        "required": true,
+        "schema": {
+          "type": "string"
+        }
+      },
+      "webshopId": {
+        "name": "webshopId",
+        "in": "path",
+        "description": "Identifier of a webshop",
         "required": true,
         "schema": {
           "type": "string"
@@ -1720,10 +1986,22 @@
       },
       "AuthorizationRequest": {
         "description": "authorization request",
+        "required": false,
         "content": {
           "application/json": {
             "schema": {
               "$ref": "#/components/schemas/AuthorizationRequest"
+            }
+          }
+        }
+      },
+      "PreAuthorizationRequest": {
+        "description": "preAuthorization request",
+        "required": false,
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/TransactionSI"
             }
           }
         }
