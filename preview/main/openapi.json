@@ -2,8 +2,8 @@
   "openapi": "3.0.3",
   "info": {
     "title": "Transaction-V3 API Definition",
-    "description": "Transaction-V3 API for Merchant Portal",
-    "version": "V3.83.0"
+    "description": "Transaction-V3 API for Merchant Portal\n\nRatenkauf Verkauf-V3 API for ratenkauf App\n\nRatenkauf Ratenrechner-V3 API for ratenkauf App",
+    "version": "V3.89.0"
   },
   "servers": [
     {
@@ -18,10 +18,6 @@
     {
       "name": "webshop",
       "description": "endpoints for operations regarding a webshop"
-    },
-    {
-      "name": "serviceintegration",
-      "description": "' similar to transaction endpoint, but with additional features for Self Integration without Payment Page frontend '"
     },
     {
       "name": "installmentplan",
@@ -446,59 +442,6 @@
         }
       }
     },
-    "/api/payment/si/v3/transaction/preAuthorization": {
-      "post": {
-        "summary": "preAuthorizes a transaction",
-        "description": "' The preAuthorization of a transaction will trigger the initialization and the decision process. It additionally requires a device-ident token. It returns the decision object with the information if the mobile tan process is required. '",
-        "tags": [
-          "serviceintegration"
-        ],
-        "security": [
-          {
-            "basicAuth": []
-          }
-        ],
-        "requestBody": {
-          "$ref": "#/components/requestBodies/PreAuthorizationRequest"
-        },
-        "responses": {
-          "200": {
-            "$ref": "#/components/responses/TransactionInitResponse"
-          },
-          "400": {
-            "$ref": "#/components/responses/ConstraintViolationError"
-          },
-          "401": {
-            "$ref": "#/components/responses/AuthenticationError"
-          },
-          "403": {
-            "$ref": "#/components/responses/ForbiddenError"
-          },
-          "409": {
-            "$ref": "#/components/responses/ConflictError"
-          }
-        }
-      }
-    },
-    "/api/payment/si/v3/identity": {
-      "post": {
-        "summary": "create an identity token (device ident ID) which must be used in the payment process",
-        "description": "' '",
-        "tags": [
-          "serviceintegration"
-        ],
-        "security": [
-          {
-            "basicAuth": []
-          }
-        ],
-        "responses": {
-          "200": {
-            "$ref": "#/components/responses/IdentityResponse"
-          }
-        }
-      }
-    },
     "/api/ratenrechner/v3/webshop/{shopIdentifier}/installmentplans": {
       "post": {
         "summary": "Calculates the installmentplan",
@@ -575,17 +518,7 @@
               "REPORT_CAPTURE_EXPIRING",
               "IN_BILLING",
               "BILLED",
-              "EXPIRED",
-              "REPORT_CAPTURE_FAILED",
-              "REPORT_CAPTURE_EXPIRING_FAILED",
-              "IN_BILLING_FAILED",
-              "BILLED_FAILED",
-              "EXPIRED_FAILED",
-              "REPORT_CAPTURE_PENDING",
-              "REPORT_CAPTURE_EXPIRING_PENDING",
-              "IN_BILLING_PENDING",
-              "BILLED_PENDING",
-              "EXPIRED_PENDING"
+              "EXPIRED"
             ]
           },
           "message": {
@@ -599,7 +532,7 @@
             }
           },
           "customer": {
-            "$ref": "#/components/schemas/Customer"
+            "$ref": "#/components/schemas/TransactionCustomer"
           },
           "creditAccountNumber": {
             "description": "(= kreditKontonummer)",
@@ -607,7 +540,7 @@
             "example": 5386968600
           },
           "orderDetails": {
-            "$ref": "#/components/schemas/OrderDetails"
+            "$ref": "#/components/schemas/TransactionOrderDetails"
           },
           "refundDetails": {
             "type": "array",
@@ -683,7 +616,7 @@
           }
         }
       },
-      "Customer": {
+      "TransactionCustomer": {
         "type": "object",
         "properties": {
           "firstName": {
@@ -700,7 +633,7 @@
           }
         }
       },
-      "OrderDetails": {
+      "TransactionOrderDetails": {
         "type": "object",
         "properties": {
           "orderId": {
@@ -837,21 +770,14 @@
           "message"
         ]
       },
-      "TransactionSI": {
-        "allOf": [
-          {
-            "$ref": "#/components/schemas/Transaction"
-          },
-          {
-            "type": "object",
-            "properties": {
-              "deviceIdentToken": {
-                "type": "string",
-                "description": "Device Ident Token"
-              }
-            }
+      "TransmitMtan": {
+        "type": "object",
+        "properties": {
+          "mtan": {
+            "type": "string",
+            "example": "789321"
           }
-        ]
+        }
       },
       "Transaction": {
         "type": "object",
@@ -862,29 +788,28 @@
             "description": "' Duration in months, depending on individual shop conditions and order value (please check your ratenkauf widget). Will be set to default value if not available. '"
           },
           "orderDetails": {
-            "$ref": "#/components/schemas/OrderDetails1"
+            "$ref": "#/components/schemas/OrderDetails"
           },
           "shopsystem": {
             "$ref": "#/components/schemas/Shopsystem"
           },
           "customer": {
-            "$ref": "#/components/schemas/Customer1"
+            "$ref": "#/components/schemas/Customer"
           },
           "customerRelationship": {
             "$ref": "#/components/schemas/CustomerRelationship"
           },
-          "redirectLinks": {
-            "$ref": "#/components/schemas/RedirectLinks"
-          },
           "consent": {
             "$ref": "#/components/schemas/Consent"
+          },
+          "redirectLinks": {
+            "$ref": "#/components/schemas/RedirectLinks"
           }
         },
         "required": [
           "shopIdentifier",
           "orderDetails",
-          "customer",
-          "redirectLinks"
+          "customer"
         ]
       },
       "TransactionUpdate": {
@@ -945,7 +870,7 @@
           }
         }
       },
-      "OrderDetails1": {
+      "OrderDetails": {
         "type": "object",
         "properties": {
           "orderValue": {
@@ -965,7 +890,7 @@
             "type": "integer",
             "minimum": 1,
             "maximum": 10,
-            "example": 2
+            "example": 1
           },
           "invoiceAddress": {
             "$ref": "#/components/schemas/InvoiceAddress"
@@ -995,7 +920,7 @@
           }
         }
       },
-      "Customer1": {
+      "Customer": {
         "type": "object",
         "properties": {
           "gender": {
@@ -1006,18 +931,19 @@
               "MRS",
               "DIVERS",
               "NO_GENDER"
-            ]
+            ],
+            "example": "MR"
           },
           "firstName": {
             "type": "string",
-            "example": "Max",
+            "example": "Ralf",
             "minLength": 2,
             "maxLength": 27,
             "pattern": "[-a-zA-ZäüößÄÖÜ\\.\\, ]*"
           },
           "lastName": {
             "type": "string",
-            "example": "Müller",
+            "example": "Ratenkauf",
             "minLength": 2,
             "maxLength": 27,
             "pattern": "[-a-zA-ZäüößÄÖÜ\\.\\, ]*"
@@ -1030,6 +956,7 @@
           "birthName": {
             "description": "Buyer birth name",
             "type": "string",
+            "example": "string",
             "minLength": 2,
             "maxLength": 27,
             "pattern": "[-a-zA-ZäüößÄÖÜ\\.\\, ]*"
@@ -1037,7 +964,8 @@
           "birthPlace": {
             "description": "Buyer birth place",
             "type": "string",
-            "maxLength": 255
+            "maxLength": 255,
+            "example": "string"
           },
           "title": {
             "type": "string",
@@ -1046,7 +974,8 @@
               "DR",
               "PROF",
               "DRDR"
-            ]
+            ],
+            "example": "PROFDR"
           },
           "contact": {
             "$ref": "#/components/schemas/Contact"
@@ -1058,7 +987,8 @@
             "$ref": "#/components/schemas/Employment"
           },
           "companyName": {
-            "type": "string"
+            "type": "string",
+            "example": ""
           }
         },
         "required": [
@@ -1107,7 +1037,7 @@
           "zip": {
             "description": "Postal code",
             "type": "string",
-            "example": 90471
+            "example": "90471"
           },
           "city": {
             "type": "string",
@@ -1136,11 +1066,13 @@
             "properties": {
               "firstName": {
                 "description": "Should match with the first name given in the person data",
-                "type": "string"
+                "type": "string",
+                "example": "Ralf"
               },
               "lastName": {
                 "description": "Should match with the last name given in the person data",
-                "type": "string"
+                "type": "string",
+                "example": "Ratenkauf"
               }
             },
             "required": [
@@ -1160,11 +1092,13 @@
             "properties": {
               "firstName": {
                 "description": "Optional, if present should match with the first name given in the person data",
-                "type": "string"
+                "type": "string",
+                "example": "Ralf"
               },
               "lastName": {
                 "description": "Optional, if present should match with the last name given in the person data",
-                "type": "string"
+                "type": "string",
+                "example": "Ratenkauf"
               }
             }
           }
@@ -1181,11 +1115,12 @@
           "mobilePhoneNumber": {
             "description": "Required in Ratenkauf process. Can be added later if not presented when initializing.",
             "type": "string",
-            "example": 17186397426
+            "example": "017186397426"
           },
           "phoneNumber": {
             "description": "Customer phone number.",
-            "type": "string"
+            "type": "string",
+            "example": "01771234567"
           },
           "phoneNumbersConfirmed": {
             "description": "true if the fields mobile phone number and phone number should not be validated.",
@@ -1203,7 +1138,7 @@
         "properties": {
           "iban": {
             "type": "string",
-            "example": "DE123456789012345678909"
+            "example": "DE06760320009210030015"
           }
         }
       },
@@ -1218,7 +1153,8 @@
               "NEW_CUSTOMER",
               "EXISTING_CUSTOMER",
               "PREMIUM_CUSTOMER"
-            ]
+            ],
+            "example": "EXISTING_CUSTOMER"
           },
           "customerSince": {
             "type": "string",
@@ -1242,7 +1178,8 @@
               "PAYMENT_DELAY",
               "PAYMENT_NOT_DONE",
               "NO_INFORMATION"
-            ]
+            ],
+            "example": "NO_INFORMATION"
           },
           "riskyItemsInShoppingCart": {
             "description": "risikoartikelImWarenkorb",
@@ -1278,7 +1215,8 @@
           },
           "urlAuthorizationCallback": {
             "description": "' Optional Callback-Url for authorization endpoint. If provided the callback will be performed, else not. '",
-            "type": "string"
+            "type": "string",
+            "example": "https://www.google.com/search?=ratenkaufCallback"
           }
         },
         "required": [
@@ -1286,6 +1224,16 @@
           "urlCancellation",
           "urlDenial"
         ]
+      },
+      "RedirectLinksSI": {
+        "type": "object",
+        "properties": {
+          "urlAuthorizationCallback": {
+            "description": "' Optional Callback-Url for authorization endpoint. If provided the callback will be performed, else not. '",
+            "type": "string",
+            "example": "https://www.google.com/search?=ratenkaufCallback"
+          }
+        }
       },
       "ShoppingCartInformation": {
         "type": "array",
@@ -1415,6 +1363,10 @@
             "type": "string",
             "example": "bd982c1b-f830-4ebc-9cfd-6ca28c17adeb"
           },
+          "redirectUrl": {
+            "description": "Redirect url",
+            "type": "string"
+          },
           "timestamp": {
             "type": "string",
             "format": "date-time",
@@ -1431,6 +1383,18 @@
           "required": {
             "type": "boolean",
             "example": true
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "PENDING",
+              "FINISHED",
+              "FAILED"
+            ]
+          },
+          "remainingAttempts": {
+            "type": "integer",
+            "example": 2
           },
           "successful": {
             "type": "boolean",
@@ -1625,6 +1589,9 @@
           },
           "plans": {
             "$ref": "#/components/schemas/Plans"
+          },
+          "errors": {
+            "$ref": "#/components/schemas/ConstraintViolation"
           }
         }
       },
@@ -1637,8 +1604,10 @@
       "Plan": {
         "type": "object",
         "properties": {
-          "term": {
-            "type": "integer"
+          "numberOfInstallments": {
+            "description": "Number of Installments defined in the payment plan ( = anzahl der Raten)",
+            "type": "integer",
+            "example": 9
           },
           "installment": {
             "type": "number"
@@ -1646,8 +1615,10 @@
           "totalInterest": {
             "type": "number"
           },
-          "totalAmount": {
-            "type": "number"
+          "totalValue": {
+            "description": "Amount of the total value in € ( = Gesamtsumme in €)",
+            "type": "number",
+            "example": 2849.35
           },
           "lastInstallment": {
             "type": "number"
@@ -1660,11 +1631,13 @@
           "installmentPlans": {
             "$ref": "#/components/schemas/InstallmentPlans"
           },
-          "minFinancing": {
-            "type": "number"
+          "minFinancingAmount": {
+            "type": "integer",
+            "example": 200
           },
-          "maxFinancing": {
-            "type": "number"
+          "maxFinancingAmount": {
+            "type": "integer",
+            "example": 10000
           }
         }
       }
@@ -1810,22 +1783,22 @@
           }
         }
       },
-      "PreAuthorizationResponse": {
-        "description": "Decision information data",
-        "content": {
-          "application/hal+json": {
-            "schema": {
-              "$ref": "#/components/schemas/TransactionSummary"
-            }
-          }
-        }
-      },
       "IdentityResponse": {
         "description": "Device Ident Token",
         "content": {
           "application/hal+json": {
             "schema": {
               "$ref": "#/components/schemas/DeviceIdentToken"
+            }
+          }
+        }
+      },
+      "MtanResponse": {
+        "description": "mtan response",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/MTan"
             }
           }
         }
@@ -1929,11 +1902,19 @@
       "tId": {
         "name": "tId",
         "in": "query",
-        "description": "Unique functional transaction identifier (consists of 6 characters) provided through the query",
+        "description": "Multiple unique functional transaction identifier (consists of 6 characters) provided through the query",
         "schema": {
-          "type": "string",
-          "example": "EWZEN7"
-        }
+          "type": "array",
+          "maxItems": 1000,
+          "items": {
+            "type": "string",
+            "example": "EWZEN7"
+          }
+        },
+        "example": [
+          "TKGZ67",
+          "TBKOP"
+        ]
       },
       "technicalTransactionId": {
         "name": "technicalTransactionId",
@@ -1995,13 +1976,13 @@
           }
         }
       },
-      "PreAuthorizationRequest": {
-        "description": "preAuthorization request",
+      "MtanRequest": {
+        "description": "mtan request",
         "required": false,
         "content": {
           "application/json": {
             "schema": {
-              "$ref": "#/components/schemas/TransactionSI"
+              "$ref": "#/components/schemas/TransmitMtan"
             }
           }
         }

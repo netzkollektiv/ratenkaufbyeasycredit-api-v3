@@ -1,8 +1,13 @@
 openapi: 3.0.3
 info:
   title: Transaction-V3 API Definition
-  description: Transaction-V3 API for Merchant Portal
-  version: V3.83.0
+  description: |-
+    Transaction-V3 API for Merchant Portal
+
+    Ratenkauf Verkauf-V3 API for ratenkauf App
+
+    Ratenkauf Ratenrechner-V3 API for ratenkauf App
+  version: V3.89.0
 servers:
   - url: 'https://partner.easycredit-ratenkauf.de'
 tags:
@@ -10,10 +15,6 @@ tags:
     description: endpoints used to process a transaction
   - name: webshop
     description: endpoints for operations regarding a webshop
-  - name: serviceintegration
-    description: >-
-      ' similar to transaction endpoint, but with additional features for Self
-      Integration without Payment Page frontend '
   - name: installmentplan
     description: endpoints for operations regarding a installmentplans
 paths:
@@ -301,44 +302,6 @@ paths:
           $ref: '#/components/responses/ForbiddenError'
         '409':
           $ref: '#/components/responses/ConflictError'
-  /api/payment/si/v3/transaction/preAuthorization:
-    post:
-      summary: preAuthorizes a transaction
-      description: >-
-        ' The preAuthorization of a transaction will trigger the initialization
-        and the decision process. It additionally requires a device-ident token.
-        It returns the decision object with the information if the mobile tan
-        process is required. '
-      tags:
-        - serviceintegration
-      security:
-        - basicAuth: []
-      requestBody:
-        $ref: '#/components/requestBodies/PreAuthorizationRequest'
-      responses:
-        '200':
-          $ref: '#/components/responses/TransactionInitResponse'
-        '400':
-          $ref: '#/components/responses/ConstraintViolationError'
-        '401':
-          $ref: '#/components/responses/AuthenticationError'
-        '403':
-          $ref: '#/components/responses/ForbiddenError'
-        '409':
-          $ref: '#/components/responses/ConflictError'
-  /api/payment/si/v3/identity:
-    post:
-      summary: >-
-        create an identity token (device ident ID) which must be used in the
-        payment process
-      description: ''' '''
-      tags:
-        - serviceintegration
-      security:
-        - basicAuth: []
-      responses:
-        '200':
-          $ref: '#/components/responses/IdentityResponse'
   '/api/ratenrechner/v3/webshop/{shopIdentifier}/installmentplans':
     post:
       summary: Calculates the installmentplan
@@ -398,16 +361,6 @@ components:
             - IN_BILLING
             - BILLED
             - EXPIRED
-            - REPORT_CAPTURE_FAILED
-            - REPORT_CAPTURE_EXPIRING_FAILED
-            - IN_BILLING_FAILED
-            - BILLED_FAILED
-            - EXPIRED_FAILED
-            - REPORT_CAPTURE_PENDING
-            - REPORT_CAPTURE_EXPIRING_PENDING
-            - IN_BILLING_PENDING
-            - BILLED_PENDING
-            - EXPIRED_PENDING
         message:
           type: string
           description: >-
@@ -418,13 +371,13 @@ components:
           items:
             $ref: '#/components/schemas/Booking'
         customer:
-          $ref: '#/components/schemas/Customer'
+          $ref: '#/components/schemas/TransactionCustomer'
         creditAccountNumber:
           description: (= kreditKontonummer)
           type: string
           example: 5386968600
         orderDetails:
-          $ref: '#/components/schemas/OrderDetails'
+          $ref: '#/components/schemas/TransactionOrderDetails'
         refundDetails:
           type: array
           items:
@@ -480,7 +433,7 @@ components:
           description: >-
             error message whenever a booking (e.g REF-UND/CAPTURE) related to a
             transaction fails
-    Customer:
+    TransactionCustomer:
       type: object
       properties:
         firstName:
@@ -492,7 +445,7 @@ components:
         customerNumber:
           type: string
           example: 2810941815
-    OrderDetails:
+    TransactionOrderDetails:
       type: object
       properties:
         orderId:
@@ -596,14 +549,12 @@ components:
           example: ratenkauf by easyCredit
       required:
         - message
-    TransactionSI:
-      allOf:
-        - $ref: '#/components/schemas/Transaction'
-        - type: object
-          properties:
-            deviceIdentToken:
-              type: string
-              description: Device Ident Token
+    TransmitMtan:
+      type: object
+      properties:
+        mtan:
+          type: string
+          example: '789321'
     Transaction:
       type: object
       properties:
@@ -615,22 +566,21 @@ components:
             order value (please check your ratenkauf widget). Will be set to
             default value if not available. '
         orderDetails:
-          $ref: '#/components/schemas/OrderDetails1'
+          $ref: '#/components/schemas/OrderDetails'
         shopsystem:
           $ref: '#/components/schemas/Shopsystem'
         customer:
-          $ref: '#/components/schemas/Customer1'
+          $ref: '#/components/schemas/Customer'
         customerRelationship:
           $ref: '#/components/schemas/CustomerRelationship'
-        redirectLinks:
-          $ref: '#/components/schemas/RedirectLinks'
         consent:
           $ref: '#/components/schemas/Consent'
+        redirectLinks:
+          $ref: '#/components/schemas/RedirectLinks'
       required:
         - shopIdentifier
         - orderDetails
         - customer
-        - redirectLinks
     TransactionUpdate:
       type: object
       properties:
@@ -680,7 +630,7 @@ components:
           type: string
           maxLength: 255
           example: 1.6.3
-    OrderDetails1:
+    OrderDetails:
       type: object
       properties:
         orderValue:
@@ -700,7 +650,7 @@ components:
           type: integer
           minimum: 1
           maximum: 10
-          example: 2
+          example: 1
         invoiceAddress:
           $ref: '#/components/schemas/InvoiceAddress'
         shippingAddress:
@@ -722,7 +672,7 @@ components:
           example: A1ZU560
           pattern: '[a-zA-Z0-9\.:\-_/]*'
           maxLength: 50
-    Customer1:
+    Customer:
       type: object
       properties:
         gender:
@@ -733,15 +683,16 @@ components:
             - MRS
             - DIVERS
             - NO_GENDER
+          example: MR
         firstName:
           type: string
-          example: Max
+          example: Ralf
           minLength: 2
           maxLength: 27
           pattern: '[-a-zA-ZäüößÄÖÜ\.\, ]*'
         lastName:
           type: string
-          example: Müller
+          example: Ratenkauf
           minLength: 2
           maxLength: 27
           pattern: '[-a-zA-ZäüößÄÖÜ\.\, ]*'
@@ -752,6 +703,7 @@ components:
         birthName:
           description: Buyer birth name
           type: string
+          example: string
           minLength: 2
           maxLength: 27
           pattern: '[-a-zA-ZäüößÄÖÜ\.\, ]*'
@@ -759,6 +711,7 @@ components:
           description: Buyer birth place
           type: string
           maxLength: 255
+          example: string
         title:
           type: string
           enum:
@@ -766,6 +719,7 @@ components:
             - DR
             - PROF
             - DRDR
+          example: PROFDR
         contact:
           $ref: '#/components/schemas/Contact'
         bank:
@@ -774,6 +728,7 @@ components:
           $ref: '#/components/schemas/Employment'
         companyName:
           type: string
+          example: ''
       required:
         - firstName
         - lastName
@@ -815,7 +770,7 @@ components:
         zip:
           description: Postal code
           type: string
-          example: 90471
+          example: '90471'
         city:
           type: string
           example: Nürnberg
@@ -836,9 +791,11 @@ components:
             firstName:
               description: Should match with the first name given in the person data
               type: string
+              example: Ralf
             lastName:
               description: Should match with the last name given in the person data
               type: string
+              example: Ratenkauf
           required:
             - firstName
             - lastName
@@ -852,11 +809,13 @@ components:
                 Optional, if present should match with the first name given in
                 the person data
               type: string
+              example: Ralf
             lastName:
               description: >-
                 Optional, if present should match with the last name given in
                 the person data
               type: string
+              example: Ratenkauf
     Contact:
       type: object
       properties:
@@ -869,10 +828,11 @@ components:
             Required in Ratenkauf process. Can be added later if not presented
             when initializing.
           type: string
-          example: 17186397426
+          example: 017186397426
         phoneNumber:
           description: Customer phone number.
           type: string
+          example: '01771234567'
         phoneNumbersConfirmed:
           description: >-
             true if the fields mobile phone number and phone number should not
@@ -887,7 +847,7 @@ components:
       properties:
         iban:
           type: string
-          example: DE123456789012345678909
+          example: DE06760320009210030015
     CustomerRelationship:
       description: Risk relevant information
       type: object
@@ -901,6 +861,7 @@ components:
             - NEW_CUSTOMER
             - EXISTING_CUSTOMER
             - PREMIUM_CUSTOMER
+          example: EXISTING_CUSTOMER
         customerSince:
           type: string
           format: date
@@ -925,6 +886,7 @@ components:
             - PAYMENT_DELAY
             - PAYMENT_NOT_DONE
             - NO_INFORMATION
+          example: NO_INFORMATION
         riskyItemsInShoppingCart:
           description: risikoartikelImWarenkorb
           type: boolean
@@ -955,10 +917,20 @@ components:
             ' Optional Callback-Url for authorization endpoint. If provided the
             callback will be performed, else not. '
           type: string
+          example: 'https://www.google.com/search?=ratenkaufCallback'
       required:
         - urlSuccess
         - urlCancellation
         - urlDenial
+    RedirectLinksSI:
+      type: object
+      properties:
+        urlAuthorizationCallback:
+          description: >-
+            ' Optional Callback-Url for authorization endpoint. If provided the
+            callback will be performed, else not. '
+          type: string
+          example: 'https://www.google.com/search?=ratenkaufCallback'
     ShoppingCartInformation:
       type: array
       minItems: 1
@@ -1056,6 +1028,9 @@ components:
           description: Verification token to identify the device
           type: string
           example: bd982c1b-f830-4ebc-9cfd-6ca28c17adeb
+        redirectUrl:
+          description: Redirect url
+          type: string
         timestamp:
           type: string
           format: date-time
@@ -1068,6 +1043,15 @@ components:
         required:
           type: boolean
           example: true
+        status:
+          type: string
+          enum:
+            - PENDING
+            - FINISHED
+            - FAILED
+        remainingAttempts:
+          type: integer
+          example: 2
         successful:
           type: boolean
           example: true
@@ -1215,6 +1199,8 @@ components:
             article and its installmentplan
         plans:
           $ref: '#/components/schemas/Plans'
+        errors:
+          $ref: '#/components/schemas/ConstraintViolation'
     Plans:
       type: array
       items:
@@ -1222,14 +1208,20 @@ components:
     Plan:
       type: object
       properties:
-        term:
+        numberOfInstallments:
+          description: >-
+            Number of Installments defined in the payment plan ( = anzahl der
+            Raten)
           type: integer
+          example: 9
         installment:
           type: number
         totalInterest:
           type: number
-        totalAmount:
+        totalValue:
+          description: Amount of the total value in € ( = Gesamtsumme in €)
           type: number
+          example: 2849.35
         lastInstallment:
           type: number
     InstallmentPlanResponse:
@@ -1237,10 +1229,12 @@ components:
       properties:
         installmentPlans:
           $ref: '#/components/schemas/InstallmentPlans'
-        minFinancing:
-          type: number
-        maxFinancing:
-          type: number
+        minFinancingAmount:
+          type: integer
+          example: 200
+        maxFinancingAmount:
+          type: integer
+          example: 10000
   responses:
     default:
       description: Internal server error or error from third party services
@@ -1332,18 +1326,18 @@ components:
         application/hal+json:
           schema:
             $ref: '#/components/schemas/TransactionInformation'
-    PreAuthorizationResponse:
-      description: Decision information data
-      content:
-        application/hal+json:
-          schema:
-            $ref: '#/components/schemas/TransactionSummary'
     IdentityResponse:
       description: Device Ident Token
       content:
         application/hal+json:
           schema:
             $ref: '#/components/schemas/DeviceIdentToken'
+    MtanResponse:
+      description: mtan response
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/MTan'
     InstallmentPlanResponse:
       description: Information about the InstallmentPlan for different articles
       content:
@@ -1419,11 +1413,17 @@ components:
       name: tId
       in: query
       description: >-
-        Unique functional transaction identifier (consists of 6 characters)
-        provided through the query
+        Multiple unique functional transaction identifier (consists of 6
+        characters) provided through the query
       schema:
-        type: string
-        example: EWZEN7
+        type: array
+        maxItems: 1000
+        items:
+          type: string
+          example: EWZEN7
+      example:
+        - TKGZ67
+        - TBKOP
     technicalTransactionId:
       name: technicalTransactionId
       in: path
@@ -1465,13 +1465,13 @@ components:
         application/json:
           schema:
             $ref: '#/components/schemas/AuthorizationRequest'
-    PreAuthorizationRequest:
-      description: preAuthorization request
+    MtanRequest:
+      description: mtan request
       required: false
       content:
         application/json:
           schema:
-            $ref: '#/components/schemas/TransactionSI'
+            $ref: '#/components/schemas/TransmitMtan'
     IntegrationCheckRequest:
       description: integration check request
       content:
