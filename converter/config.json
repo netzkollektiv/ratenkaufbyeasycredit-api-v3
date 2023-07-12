@@ -1,13 +1,31 @@
 {
   "inputs": [
     {
-      "inputFile": "./dist/merchant-api.json"
+      "inputFile": "./dist/merchant-api.json",
+      "dispute": {
+        "prefix": "Merchant"
+      },
+      "description": {
+        "append": true
+      }
     },
     {
-      "inputFile": "./dist/payment-api.json"
+      "inputFile": "./dist/payment-api.json",
+      "dispute": {
+        "prefix": "Payment"
+      },
+      "description": {
+        "append": true
+      }
     },
     {
-      "inputFile": "./dist/calculator-api.json"
+      "inputFile": "./dist/calculator-api.json",
+      "dispute": {
+        "prefix": "Calculator"
+      },
+      "description": {
+        "append": true
+      }
     }
   ], 
   "output": "../openapi.json"

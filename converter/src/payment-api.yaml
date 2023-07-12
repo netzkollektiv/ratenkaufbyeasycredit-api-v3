@@ -2,7 +2,7 @@ openapi: 3.0.2
 info:
   title: Ratenkauf Verkauf-V3 API Definition
   description: Ratenkauf Verkauf-V3 API for ratenkauf App
-  version: V3.74.2
+  version: V3.120.1
 tags:
   - name: webshop
     description: endpoints for operations regarding a webshop
@@ -20,6 +20,8 @@ tags:
     If you do not send a signature or if signature validation fails -> HTTP 400.
     The signature response from our service is in the same format.
     '''
+servers:
+  - url: https://ratenkauf.easycredit.de
 paths:
   /api/payment/v3/webshop/integrationcheck:
     post:
@@ -61,6 +63,22 @@ paths:
           $ref: '#/components/responses/AuthenticationError'
         '403':
           $ref: '#/components/responses/ForbiddenError'
+  /api/payment/v3/webshop/{webshopId}:
+    get:
+      summary: Get the necessary information about the webshop
+      description: '''
+          This API returns the necessary information of the corresponding webshop. This includes max and min financing amount,
+          interest rate, test mode, current availability information and privacy approval form
+          '''
+      tags:
+        - webshop
+      parameters:
+        - $ref: '#/components/parameters/webshopId'
+      responses:
+        '200':
+          $ref: '#/components/responses/WebshopResponse'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
   /api/payment/v3/transaction:
     post:
       summary: Initiates a transaction based on the given request
@@ -170,6 +188,12 @@ components:
           example: ratenkauf by easyCredit
       required:
         - message
+    TransmitMtan:
+      type: object
+      properties:
+        mtan:
+          type: string
+          example: '789321'
     Transaction:
       type: object
       properties:
@@ -188,13 +212,12 @@ components:
           $ref: '#/components/schemas/Customer'
         customerRelationship:
           $ref: '#/components/schemas/CustomerRelationship'
+        consent:
+          $ref: '#/components/schemas/Consent'
         redirectLinks:
           $ref: '#/components/schemas/RedirectLinks'
       required:
-        - shopIdentifier
         - orderDetails
-        - customer
-        - redirectLinks
     TransactionUpdate:
       type: object
       properties:
@@ -215,6 +238,13 @@ components:
           maxLength: 50
         shoppingCartInformation:
           $ref: '#/components/schemas/ShoppingCartInformation'
+        financingTerm:
+          type: integer
+          example: 6
+          description: '''
+                  Duration in months, depending on individual shop conditions and order value (please check your ratenkauf widget).
+                  Will be set to default value if not available.
+                  '''
     Shopsystem:
       description: technischeShopparameter
       type: object
@@ -222,10 +252,12 @@ components:
         shopSystemManufacturer:
           description: Shop system manufacturer
           type: string
+          maxLength: 255
           example: Shopware 5.5.10
         shopSystemModuleVersion:
           description: Shop system module version
           type: string
+          maxLength: 255
           example: 1.6.3
     OrderDetails:
       type: object
@@ -243,7 +275,13 @@ components:
         numberOfProductsInShoppingCart:
           description: anzahlProdukteImWarenkorb
           type: integer
-          example: 2
+          minimum: 1
+          maximum: 1000
+          example: 1
+        withoutFlexprice:
+          type: boolean
+          description: 'Indicator if a flexprice should NOT be used if available'
+          default: false
         invoiceAddress:
           $ref: '#/components/schemas/InvoiceAddress'
         shippingAddress:
@@ -252,8 +290,6 @@ components:
           $ref: '#/components/schemas/ShoppingCartInformation'
       required:
         - orderValue
-        - invoiceAddress
-        - shippingAddress
     AuthorizationRequest:
       type: object
       properties:
@@ -274,30 +310,35 @@ components:
             - MRS
             - DIVERS
             - NO_GENDER
+          example: MR
         firstName:
           type: string
-          example: Max
+          example: Ralf
           minLength: 2
           maxLength: 27
-          pattern: "[-a-zA-ZäüößÄÖÜ\\.\\, ]*"
+          pattern: "[-a-zÀ-ú-zA-ZäüößÄÖÜěščřžůďťňĎŇŤŠČŘŽŮĚO'\\.\\, ]*"
         lastName:
           type: string
-          example: Müller
+          example: Ratenkauf
           minLength: 2
           maxLength: 27
-          pattern: "[-a-zA-ZäüößÄÖÜ\\.\\, ]*"
+          pattern: "[-a-zÀ-ú-zA-ZäüößÄÖÜěščřžůďťňĎŇŤŠČŘŽŮĚO'\\.\\, ]*"
         birthDate:
           type: string
+          format: date
           example: '1949-10-17'
         birthName:
           description: Buyer birth name
           type: string
+          example: string
           minLength: 2
           maxLength: 27
-          pattern: "[-a-zA-ZäüößÄÖÜ\\.\\, ]*"
+          pattern: "[-a-zÀ-ú-zA-ZäüößÄÖÜěščřžůďťňĎŇŤŠČŘŽŮĚO'\\.\\, ]*"
         birthPlace:
           description: Buyer birth place
           type: string
+          maxLength: 255
+          example: string
         title:
           type: string
           enum:
@@ -305,16 +346,16 @@ components:
             - DR
             - PROF
             - DRDR
+          example: PROFDR
         contact:
           $ref: '#/components/schemas/Contact'
         bank:
           $ref: '#/components/schemas/Bank'
         employment:
           $ref: '#/components/schemas/Employment'
-      required:
-        - firstName
-        - lastName
-        - contact
+        companyName:
+          type: string
+          example: ''
     Employment:
       type: object
       properties:
@@ -348,10 +389,11 @@ components:
         zip:
           description: Postal code
           type: string
-          example: 90471
+          example: '90471'
         city:
           type: string
           example: Nürnberg
+          maxLength: 25
         country:
           description: Country as 2-digit ISO code
           type: string
@@ -369,9 +411,13 @@ components:
             firstName:
               description: Should match with the first name given in the person data
               type: string
+              example: Ralf
             lastName:
               description: Should match with the last name given in the person data
               type: string
+              example: Ratenkauf
+            packageStation:
+              type: boolean
           required:
             - firstName
             - lastName
@@ -383,9 +429,11 @@ components:
             firstName:
               description: Optional, if present should match with the first name given in the person data
               type: string
+              example: Ralf
             lastName:
               description: Optional, if present should match with the last name given in the person data
               type: string
+              example: Ratenkauf
     Contact:
       type: object
       properties:
@@ -396,23 +444,25 @@ components:
         mobilePhoneNumber:
           description: Required in Ratenkauf process. Can be added later if not presented when initializing.
           type: string
-          example: 017186397426
-        skipMobilePhoneNumberCheck:
-          description: true if the field mobile phone number should not be checked
-          type: boolean
-          example: false
+          example: '017186397426'
         phoneNumber:
           description: Customer phone number.
           type: string
-      required:
-        - email
+          example: '01771234567'
+        phoneNumbersConfirmed:
+          description: true if the fields mobile phone number and phone number should not be validated.
+          type: boolean
+          example: false
     Bank:
       description: International Bank Account Number
       type: object
       properties:
         iban:
           type: string
-          example: DE123456789012345678909
+          example: DE06760320009210030015
+        bic:
+          type: string
+          example: MARKDEFFXXX
     CustomerRelationship:
       description: Risk relevant information
       type: object
@@ -424,6 +474,7 @@ components:
             - NEW_CUSTOMER
             - EXISTING_CUSTOMER
             - PREMIUM_CUSTOMER
+          example: EXISTING_CUSTOMER
         customerSince:
           type: string
           format: date
@@ -443,6 +494,7 @@ components:
             - PAYMENT_DELAY
             - PAYMENT_NOT_DONE
             - NO_INFORMATION
+          example: NO_INFORMATION
         riskyItemsInShoppingCart:
           description: risikoartikelImWarenkorb
           type: boolean
@@ -450,9 +502,8 @@ components:
         logisticsServiceProvider:
           description: Logistics service provider for the delivery of the order
           type: string
+          maxLength: 255
           example: Hermes
-      required:
-        - orderDoneWithLogin
     RedirectLinks:
       description: Redirect url addresses in case of success, cancellation and denial
       type: object
@@ -475,10 +526,21 @@ components:
           If provided the callback will be performed, else not.
           '''
           type: string
+          example: https://www.google.com/search?=ratenkaufCallback
       required:
         - urlSuccess
         - urlCancellation
         - urlDenial
+    RedirectLinksSI:
+      type: object
+      properties:
+        urlAuthorizationCallback:
+          description: '''
+                  Optional Callback-Url for authorization endpoint.
+                  If provided the callback will be performed, else not.
+                  '''
+          type: string
+          example: https://www.google.com/search?=ratenkaufCallback
     ShoppingCartInformation:
       type: array
       minItems: 1
@@ -489,6 +551,7 @@ components:
       properties:
         productName:
           type: string
+          maxLength: 255
           example: Washing Machine
         quantity:
           type: integer
@@ -499,9 +562,11 @@ components:
           example: 599.95
         manufacturer:
           type: string
+          maxLength: 255
           example: Siemens
         productCategory:
           type: string
+          maxLength: 255
           example: Household Appliances
         articleNumber:
           description: Article number of a product
@@ -518,10 +583,12 @@ components:
         numberType:
           description: Number type of the article
           type: string
+          maxLength: 255
           example: GTIN
         number:
           description: Article number of the given type
           type: string
+          maxLength: 255
           example: 1111111
       required:
         - numberType
@@ -554,8 +621,24 @@ components:
           type: boolean
           example: false
         privacyApprovalForm:
-          description: form for privacy approval
+          description: form for privacy approval (zustimmungDatenuebertragungPaymentPage)
           type: string
+        declarationOfConsent:
+          description: (zustimmungEinwilligungserklaerungPaymentPage)
+          type: string
+        illustrativeExample:
+          description: (repraesentativesBeispiel)
+          type: string
+        productDetails:
+          description: (produktangaben)
+          type: string
+        uuid:
+          description: request-id
+          type: string
+        flexprice:
+          description: true if the shop has an active flexprice or a flexprice time period is planned for the future
+          type: boolean
+          default: false
     TransactionInitResponse:
       type: object
       properties:
@@ -571,13 +654,106 @@ components:
           description: Verification token to identify the device
           type: string
           example: bd982c1b-f830-4ebc-9cfd-6ca28c17adeb
+        redirectUrl:
+          description: Redirect url
+          type: string
         timestamp:
           type: string
           format: date-time
           example: '2021-03-04T14:41:09.002Z'
+        transactionInformation:
+          $ref: '#/components/schemas/TransactionInformation'
+    MTan:
+      type: object
+      properties:
+        required:
+          type: boolean
+          example: true
+        status:
+          type: string
+          enum:
+            - PENDING
+            - FINISHED
+            - FAILED
+        remainingAttempts:
+          type: integer
+          example: 2
+        successful:
+          type: boolean
+          example: true
+        mobilePhoneNumberInvalid:
+          type: boolean
+          example: true
+        skipMobilePhoneNumberValidation:
+          type: boolean
+          example: true
+    BankAccountCheck:
+      type: object
+      properties:
+        required:
+          type: boolean
+          example: false
+        successful:
+          type: boolean
+          example: false
+    Interests:
+      type: object
+      properties:
+        effectiveInterest:
+          description: ( = effektivzins in €)
+          type: number
+          example: 8.99
+        nominalInterest:
+          description: ( = nominalzins in €)
+          type: number
+          example: 8.64
+        interest:
+          description: Amount of the interest accrued in € ( = anfallender Zinsbetrag in €)
+          type: number
+          example: 234.56
+    PaymentPlan:
+      type: object
+      properties:
+        numberOfInstallments:
+          description: Number of Installments defined in the payment plan ( = anzahl der Raten)
+          type: integer
+          example: 9
+        firstInstallmentDate:
+          description: Date indicating the first installment payment ( = terminErsteRate)
+          type: string
+          format: date
+        lastInstallmentDate:
+          description: Date indicating the last installment payment ( = terminLetzteRate)
+          type: string
+          format: date
+        installment:
+          description: Amount in € of a single installment according to the payment plan ( = betrag der Rate in €)
+          type: number
+          example: 302
+        lastInstallment:
+          description: Amount in € of the last installment according to the payment plan ( = betrag der letzten Rate in €)
+          type: number
+          example: 293.58
+    InstallmentPlan:
+      type: object
+      properties:
+        totalValuePlan:
+          description: Amount of the installment plan total value in € ( = Gesamtsumme in €)
+          type: number
+        interests:
+          $ref: '#/components/schemas/Interests'
+        paymentPlan:
+          $ref: '#/components/schemas/PaymentPlan'
     TransactionSummary:
       type: object
       properties:
+        transactionId:
+          description: Unique functional transaction identifier (consists of 6 characters)
+          type: string
+          example: EWZEN7
+        deviceIdentToken:
+          type: string
+          example: 'dffedf20-21df-11ec-9621-0242ac130002'
         orderValue:
           description: Amount of the order value in € ( = Bestellwert in €)
           type: number
@@ -586,6 +762,18 @@ components:
           description: Amount of the interest accrued in € ( = anfallender Zinsbetrag in €)
           type: number
           example: 234.56
+        nominalInterest:
+          description: ( = nominalzins in €)
+          type: number
+          example: 8.64
+        effectiveInterest:
+          description: ( = effektivzins in €)
+          type: number
+          example: 8.99
+        merchantSpecificInterest:
+          description: ( = haendlerspezifischerZinssatz in €)
+          type: number
+          example: 8.99
         totalValue:
           description: Amount of the total value in € ( = Gesamtsumme in €)
           type: number
@@ -597,18 +785,61 @@ components:
           enum:
             - POSITIVE
             - NEGATIVE
+        decisionOutcomeText:
+          description: Text containing further information on the decision outcome ( = entscheidungsergebnisTextbaustein)
+          type: string
         numberOfInstallments:
           description: Number of Installments defined in the payment plan ( = anzahl der Raten)
           type: integer
           example: 9
+        minNumberOfInstallments:
+          description: minimum number of Installments defined in the payment plan ( = minimaleLaufzeit)
+          type: integer
+          example: 2
+        maxNumberOfInstallments:
+          description: maximum number of Installments defined in the payment plan ( = maximaleLaufzeit)
+          type: integer
+          example: 60
         installment:
           description: Amount in € of a single installment according to the payment plan ( = betrag der Rate in €)
           type: number
           example: 302
         lastInstallment:
-          description: Amount  in € of the last installment according to the payment plan ( = betrag der letzten Rate in €)
+          description: Amount in € of the last installment according to the payment plan ( = betrag der letzten Rate in €)
           type: number
           example: 293.58
+        firstInstallmentDate:
+          description: Date indicating the first installment payment ( = terminErsteRate)
+          type: string
+          format: date
+        lastInstallmentDate:
+          description: Date indicating the last installment payment ( = terminLetzteRate)
+          type: string
+          format: date
+        amortizationPlanText:
+          description: Text containing the amortization plan ( = tilgungsplanText)
+          type: string
+        urlPreContractualInformation:
+          description: ( = urlVorvertraglicheInformationen)
+          type: string
+        installmentPlans:
+          description: List of possible installment payment plans
+          type: array
+          items:
+            $ref: '#/components/schemas/InstallmentPlan'
+        mtan:
+          $ref: '#/components/schemas/MTan'
+        bankAccountCheck:
+          $ref: '#/components/schemas/BankAccountCheck'
+    DeviceIdentToken:
+      type: object
+      properties:
+        timestamp:
+          type: string
+          format: date-time
+        deviceIdentToken:
+          type: string
+          example: 'dffedf20-21df-11ec-9621-0242ac130002'
     TransactionInformation:
       type: object
       properties:
@@ -624,6 +855,17 @@ components:
             - DECLINED
             - AUTHORIZED
             - EXPIRED
+    Consent:
+      type: object
+      properties:
+        sepaMandate:
+          type: boolean
+        advertisement:
+          type: boolean
+        dataProcessing:
+          type: boolean
+        consentToActInOnwnName:
+          type: boolean
     AuthorizationStatusResponse:
       type: object
       properties:
@@ -676,13 +918,28 @@ components:
       required: true
       schema:
         type: string
+    webshopId:
+      name: webshopId
+      in: path
+      description: Identifier of a webshop
+      required: true
+      schema:
+        type: string
   requestBodies:
     AuthorizationRequest:
       description: authorization request
+      required: false
       content:
         application/json:
           schema:
             $ref: '#/components/schemas/AuthorizationRequest'
+    MtanRequest:
+      description: mtan request
+      required: false
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/TransmitMtan'
     IntegrationCheckRequest:
       description: integration check request
       content:
@@ -744,6 +1001,18 @@ components:
         application/hal+json:
           schema:
             $ref: '#/components/schemas/TransactionInformation'
+    IdentityResponse:
+      description: Device Ident Token
+      content:
+        application/hal+json:
+          schema:
+            $ref: '#/components/schemas/DeviceIdentToken'
+    MtanResponse:
+      description: mtan response
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/MTan'
     ConstraintViolationError:
       description: The request is invalid and has one or more constraint violations.
       content:

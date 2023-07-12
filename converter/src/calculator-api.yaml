@@ -2,10 +2,12 @@ openapi: 3.0.2
 info:
   title: Ratenkauf Ratenrechner-V3 API Definition
   description: Ratenkauf Ratenrechner-V3 API for ratenkauf App
-  version: V3.68.0
+  version: V3.120.0
 tags:
   - name: installmentplan
     description: endpoints for operations regarding a installmentplans
+servers:
+  - url: https://ratenkauf.easycredit.de
 paths:
   /api/ratenrechner/v3/webshop/{shopIdentifier}/installmentplans:
     post:
@@ -50,6 +52,10 @@ components:
           type: number
           description: 'Amount in €'
           example: 599.95
+        withoutFlexprice:
+          type: boolean
+          description: 'Indicator if a flexprice should NOT be used if available'
+          default: false
     InstallmentPlans:
       type: array
       items:
@@ -69,6 +75,8 @@ components:
           description: 'Url leading to the widget providing more detailed information for an article and its installmentplan'
         plans:
           $ref: '#/components/schemas/Plans'
+        errors:
+          $ref: '#/components/schemas/ConstraintViolation'
     Plans:
       type: array
       items:
@@ -76,15 +84,31 @@ components:
     Plan:
       type: object
       properties:
-        term:
+        numberOfInstallments:
+          description: 'Number of Installments defined in the payment plan ( = anzahl der Raten)'
           type: integer
+          example: 9
         installment:
+          type: number
+        totalInterest:
+          type: number
+        totalValue:
+          description: 'Amount of the total value in € ( = Gesamtsumme in €)'
+          type: number
+          example: 2849.35
+        lastInstallment:
           type: number
     InstallmentPlanResponse:
       type: object
       properties:
         installmentPlans:
           $ref: '#/components/schemas/InstallmentPlans'
+        minFinancingAmount:
+          type: integer
+          example: 200
+        maxFinancingAmount:
+          type: integer
+          example: 10000
     ConstraintViolation:
       type: object
       properties:
@@ -153,4 +177,3 @@ components:
         application/problem+json:
           schema:
             $ref: '#/components/schemas/ConstraintViolation'
-

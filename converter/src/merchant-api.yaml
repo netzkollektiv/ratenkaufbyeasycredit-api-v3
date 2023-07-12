@@ -2,11 +2,40 @@ openapi: 3.0.2
 info:
   title: Transaction-V3 API Definition
   description: Transaction-V3 API for Merchant Portal
-  version: V3.74.0
+  version: V3.104.0
 tags:
   - name: transaction
     description: endpoints used to process a transaction
+  - name: document
+servers:
+  - url: https://partner.easycredit-ratenkauf.de
 paths:
+  /api/merchant/v3/documents:
+    get:
+      summary: Download billing documents of a merchant.
+      description: '''
+        Download billing documents of a merchant. Following parameters can be given to restrict:
+          billing date from/to, document type, webshop id and file type
+        If no date range is given, all billing documents of the last month will be returned.
+      '''
+      tags:
+        - document
+      security:
+        - basicAuth: [ ]
+      parameters:
+        - $ref: '#/components/parameters/billingDateFrom'
+        - $ref: '#/components/parameters/billingDateTo'
+        - $ref: '#/components/parameters/documentType'
+        - $ref: '#/components/parameters/fileType'
+      responses:
+        '200':
+          $ref: '#/components/responses/ZipDocumentResponse'
+        '400':
+          $ref: '#/components/responses/ConstraintViolationError'
+        '401':
+          $ref: '#/components/responses/AuthenticationError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
   /api/merchant/v3/transaction:
     get:
       summary: Find transactions of a merchant according to some search parameters.
@@ -32,6 +61,7 @@ paths:
         - $ref: '#/components/parameters/status'
         - $ref: '#/components/parameters/minOrderValue'
         - $ref: '#/components/parameters/maxOrderValue'
+        - $ref: '#/components/parameters/tId'
       responses:
         '200':
           $ref: '#/components/responses/TransactionListResponse'
@@ -71,7 +101,7 @@ paths:
       tags:
         - transaction
       security:
-        - basicAuth: []
+        - basicAuth: [ ]
       parameters:
         - $ref: '#/components/parameters/transactionId'
       requestBody:
@@ -97,7 +127,7 @@ paths:
   /api/merchant/v3/transaction/{transactionId}/refund:
     post:
       summary: Report a refund for a transaction according to its unique functional identifier
-      description: Reports a refund for the specified merchant's transaction. Currently there can only be one active refund.
+      description: Reports a refund for the specified merchant's transaction. There can be multiple active refunds.
       tags:
         - transaction
       security:
@@ -122,8 +152,6 @@ paths:
           $ref: '#/components/responses/ForbiddenError'
         '404':
           $ref: '#/components/responses/NotFoundError'
-        '409':
-          $ref: '#/components/responses/ConflictError'
 components:
   securitySchemes:
     basicAuth:
@@ -166,19 +194,6 @@ components:
             - IN_BILLING
             - BILLED
             - EXPIRED
-            - REPORT_CAPTURE_FAILED
-            - REPORT_CAPTURE_EXPIRING_FAILED
-            - IN_BILLING_FAILED
-            - BILLED_FAILED
-            - EXPIRED_FAILED
-            - REPORT_CAPTURE_PENDING
-            - REPORT_CAPTURE_EXPIRING_PENDING
-            - IN_BILLING_PENDING
-            - BILLED_PENDING
-            - EXPIRED_PENDING
-        message:
-          type: string
-          description: error message whenever a booking (e.g REFUND/CAPTURE) related to a transaction fails
         bookings:
           type: array
           items:
@@ -199,6 +214,11 @@ components:
           description: Sum of all the refund amounts in €
           type: number
           example: 488.37
+        expirationDateTime:
+          description: Expiration date for transactions in state REPORT_CAPTURE
+          type: string
+          format: date-time
+          example: '2021-03-04T14:41:09.002Z'
     CaptureRequest:
       type: object
       properties:
@@ -215,9 +235,14 @@ components:
           minimum: 0
           exclusiveMinimum: true
           example: 200.00
+        bookingId:
+          type: string
+          maxLength: 50
       required:
         - value
     Booking:
+      discriminator:
+        propertyName: bookingType
       type: object
       properties:
         uuid:
@@ -242,8 +267,28 @@ components:
             - PENDING
             - PROCESSING
         message:
+          $ref: '#/components/schemas/Message'
+    RefundBooking:
+      allOf:
+        - $ref: '#/components/schemas/Booking'
+        - type: object
+          properties:
+            amount:
+              description: "the amount of the current Refund-Booking"
+              type: number
+              example: 356.62
+            bookingId:
+              type: string
+              maxLength: 50
+    Message:
+      type: object
+      properties:
+        messageDE:
           type: string
-          description: error message whenever a booking (e.g REF-UND/CAPTURE) related to a transaction fails
+          description: German error message whenever a booking (e.g REFUND/CAPTURE) related to a transaction fails
+        messageEN:
+          type: string
+          description: error message whenever a booking (e.g REFUND/CAPTURE) related to a transaction fails
     Customer:
       type: object
       properties:
@@ -259,6 +304,15 @@ components:
     OrderDetails:
       type: object
       properties:
+        orderId:
+          description: Order Id
+          type: string
+          example: ABCDE
+        clearingDate:
+          description: Clearing date ( = abrechnungsdatum)
+          type: string
+          format: date
+          example: '2017-05-06'
         orderDate:
           description: Order date ( = bestelldatum)
           type: string
@@ -339,6 +393,45 @@ components:
         detail:
           type: string
   parameters:
+    billingDateFrom:
+      name: billingDateFrom
+      description: set by default to the last month if not specified
+      in: query
+      schema:
+        type: string
+        format: date
+    billingDateTo:
+      name: billingDateTo
+      description: set by default to billingDateFrom + one month if not specified
+      in: query
+      schema:
+        type: string
+        format: date
+    documentType:
+      name: documentType
+      description: set by default to all options if not specified
+      in: query
+      schema:
+        type: array
+        items:
+          type: string
+          enum:
+            - MONTHLY_BILL
+            - ADVICE_OF_SETTLEMENT
+            - LEG_BILL
+            - DUNNING_LETTER
+    fileType:
+      name: fileType
+      description: set by default to all options if not specified
+      in: query
+      schema:
+        type: array
+        items:
+          type: string
+          enum:
+            - PDF
+            - CSV
+            - MSG
     transactionId:
       name: transactionId
       in: path
@@ -403,6 +496,17 @@ components:
       schema:
         type: number
         example: 9999.99
+    tId:
+      name: tId
+      in: query
+      description: Multiple unique functional transaction identifier (consists of 6 characters) provided through the query
+      schema:
+        type: array
+        maxItems: 1000
+        items:
+          type: string
+          example: "EWZEN7"
+      example: [ 'TKGZ67', 'TBKOP' ]
   requestBodies:
     CaptureRequest:
       description: Capture Request Object
@@ -423,6 +527,13 @@ components:
         application/problem+json:
           schema:
             $ref: '#/components/schemas/ServerError'
+    ZipDocumentResponse:
+      description: Billing documents wrapped into a ZIP File
+      content:
+        application/zip:
+          schema:
+            type: string
+            format: binary
     TransactionResponse:
       description: Transaction data
       content:

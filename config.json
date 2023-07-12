@@ -1,14 +1,20 @@
 {
     "variableNamingConvention": "camelCase",
-    "packageName": "ratenkaufbyeasycredit-payment-api-v3-php",
-    "packagePath": "ratenkaufbyeasycredit/payment-api-v3-php",
+    "packageName": "ratenkaufbyeasycredit-api-v3-php",
+    "packagePath": "ratenkaufbyeasycredit/api-v3-php",
     "invokerPackage": "Teambank\\RatenkaufByEasyCreditApiV3",
     "modelPackage": "Model",
     "apiPackage": "Service",
     "srcBasePath": "src/",
     "gitUserId": "netzkollektiv",
-    "gitRepoId": "ratenkaufbyeasycredit-payment-api-v3-php",
+    "gitRepoId": "ratenkaufbyeasycredit-api-v3-php",
     "composerVendorName": "ratenkaufbyeasycredit",
-    "composerProjectName": "payment-api-v3-php",
-    "httpUserAgent": "ratenkaufbyeasycredit-payment-api-v3/PHP"
+    "composerProjectName": "api-v3-php",
+    "httpUserAgent": "ratenkaufbyeasycredit-api-v3/PHP",
+    "files": {
+      "Client.mustache": {
+        "destinationFilename": "src/Client.php",
+        "templateType": "SupportingFiles"
+      }
+    }
 }
